@@ -1,0 +1,34 @@
+# Authored by: Shubham Tapadiya
+# Created: 2026-09-02
+# Updated: 2026-09-02
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt -r requirements-dev.txt
+          pip install ruff
+
+      - name: Lint
+        run: ruff check src tests scripts
+
+      - name: Line-length check (hard 99-char limit)
+        run: |
+          ! grep -rn '.\{100,\}' --include='*.py' src tests scripts
+
+      - name: Test
+        run: pytest --cov=src --cov-report=term-missing

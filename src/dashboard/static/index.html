@@ -1,0 +1,137 @@
+<!-- Authored by: Shubham Tapadiya -->
+<!-- Created: 2026-09-02 -->
+<!-- Updated: 2026-09-02 -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>cam-track analytics</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+  <style>
+    body { font-family: -apple-system, Segoe UI, sans-serif; margin: 2rem; background: #0b0f14; color: #e6edf3; }
+    h1 { font-weight: 600; }
+    .controls { margin-bottom: 1rem; }
+    select { background: #161b22; color: #e6edf3; border: 1px solid #30363d; padding: 0.4rem; border-radius: 6px; }
+    #chart-container { max-width: 900px; background: #0d1117; padding: 1rem; border-radius: 8px; border: 1px solid #30363d; }
+    .status { color: #8b949e; font-size: 0.85rem; margin-top: 0.5rem; }
+  </style>
+</head>
+<body>
+  <h1>cam-track: live foot-traffic analytics</h1>
+
+  <div class="controls">
+    <label for="camera-select">Camera:</label>
+    <select id="camera-select">
+      <option value="">All cameras</option>
+    </select>
+    <label for="minutes-select">Window:</label>
+    <select id="minutes-select">
+      <option value="30">Last 30 min</option>
+      <option value="60" selected>Last 60 min</option>
+      <option value="360">Last 6 hours</option>
+      <option value="1440">Last 24 hours</option>
+    </select>
+  </div>
+
+  <div id="chart-container">
+    <canvas id="traffic-chart" height="100"></canvas>
+  </div>
+  <div class="status" id="status-line">Loading...</div>
+
+  <script>
+    const REFRESH_INTERVAL_MS = 15000;
+
+    async function fetchJson(url) {
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Request to ${url} failed with status ${response.status}`);
+      }
+      return response.json();
+    }
+
+    async function populateCameraOptions() {
+      const select = document.getElementById("camera-select");
+      try {
+        const cameras = await fetchJson("/api/cameras");
+        for (const camera of cameras) {
+          const option = document.createElement("option");
+          option.value = camera.camera_id;
+          option.textContent = `${camera.camera_id} (${camera.zone})`;
+          select.appendChild(option);
+        }
+      } catch (err) {
+        console.error("Failed to load cameras", err);
+      }
+    }
+
+    function aggregateByBucket(rows) {
+      const totals = new Map();
+      for (const row of rows) {
+        totals.set(row.bucket, (totals.get(row.bucket) || 0) + row.distinct_track_count);
+      }
+      return [...totals.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+    }
+
+    let chart = null;
+
+    function renderChart(labels, values) {
+      const ctx = document.getElementById("traffic-chart").getContext("2d");
+      if (chart) {
+        chart.data.labels = labels;
+        chart.data.datasets[0].data = values;
+        chart.update();
+        return;
+      }
+      chart = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels,
+          datasets: [{
+            label: "Distinct tracks / minute",
+            data: values,
+            borderColor: "#58a6ff",
+            backgroundColor: "rgba(88, 166, 255, 0.15)",
+            tension: 0.25,
+            fill: true,
+          }],
+        },
+        options: {
+          responsive: true,
+          scales: {
+            x: { ticks: { color: "#8b949e" } },
+            y: { ticks: { color: "#8b949e" }, beginAtZero: true },
+          },
+          plugins: { legend: { labels: { color: "#e6edf3" } } },
+        },
+      });
+    }
+
+    async function refresh() {
+      const cameraId = document.getElementById("camera-select").value;
+      const minutes = document.getElementById("minutes-select").value;
+      const statusLine = document.getElementById("status-line");
+
+      const params = new URLSearchParams({ minutes });
+      if (cameraId) params.set("camera_id", cameraId);
+
+      try {
+        const rows = await fetchJson(`/api/traffic?${params.toString()}`);
+        const aggregated = cameraId ? rows.map((r) => [r.bucket, r.distinct_track_count]) : aggregateByBucket(rows);
+        renderChart(
+          aggregated.map(([bucket]) => new Date(bucket).toLocaleTimeString()),
+          aggregated.map(([, count]) => count)
+        );
+        statusLine.textContent = `Updated ${new Date().toLocaleTimeString()} -- ${rows.length} data point(s)`;
+      } catch (err) {
+        statusLine.textContent = `Could not reach the dashboard API: ${err.message}`;
+      }
+    }
+
+    document.getElementById("camera-select").addEventListener("change", refresh);
+    document.getElementById("minutes-select").addEventListener("change", refresh);
+
+    populateCameraOptions().then(refresh);
+    setInterval(refresh, REFRESH_INTERVAL_MS);
+  </script>
+</body>
+</html>

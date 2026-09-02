@@ -1,0 +1,19 @@
+# Core dependencies needed by every service (ingestion, inference, storage,
+# dashboard). Install with: pip install -r requirements.txt
+#
+# Heavy, optional ML backends (training-time YOLO, ONNX Runtime, Kafka) are
+# kept out of this file and installed only when that backend is actually
+# used -- see requirements-ml.txt and docs/decisions/0001-detector-choice.md.
+
+numpy>=1.26,<2.0
+scipy>=1.11
+opencv-python-headless>=4.9
+pydantic>=2.6
+pydantic-settings>=2.2
+PyYAML>=6.0
+
+redis>=5.0
+psycopg2-binary>=2.9
+
+fastapi>=0.110
+uvicorn[standard]>=0.27

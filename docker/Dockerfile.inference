@@ -1,0 +1,27 @@
+# Authored by: Shubham Tapadiya
+# Created: 2026-09-02
+# Updated: 2026-09-02
+#
+# Inference service image: ONNX Runtime only (not `ultralytics`/PyTorch) --
+# see docs/decisions/0001-detector-choice.md and 0005-edge-vs-cloud.md for
+# why the deployment image should not carry a full PyTorch install. Models
+# are exported once, offline, with scripts/export_onnx.py, then mounted or
+# baked into `models/` at build/deploy time.
+
+FROM python:3.11-slim AS base
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgl1 \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt \
+    && pip install --no-cache-dir "onnxruntime>=1.17"
+
+COPY src/ ./src/
+
+ENV PYTHONUNBUFFERED=1
+ENTRYPOINT ["python", "-m", "src.inference.main"]

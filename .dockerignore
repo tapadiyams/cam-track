@@ -1,0 +1,14 @@
+# Authored by: Shubham Tapadiya
+# Created: 2026-09-02
+# Updated: 2026-09-02
+
+.venv
+__pycache__
+*.pyc
+.pytest_cache
+.ruff_cache
+.git
+tests
+docs
+*.md
+data

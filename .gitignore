@@ -1,0 +1,26 @@
+# Authored by: Shubham Tapadiya
+# Created: 2026-09-02
+# Updated: 2026-09-02
+
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv*/
+venv/
+*.egg-info/
+
+.env
+
+data/
+models/*.onnx
+models/*.pt
+sample_data/*.mp4
+sample_data/*.avi
+
+.idea/
+.vscode/
+
+.DS_Store

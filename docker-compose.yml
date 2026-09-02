@@ -1,0 +1,98 @@
+# Authored by: Shubham Tapadiya
+# Created: 2026-09-02
+# Updated: 2026-09-02
+#
+# Local/demo stack. `inference` is the one service meant to be scaled
+# horizontally (`docker compose up --scale inference=4`); every replica
+# joins the same `ConsumerGroups.INFERENCE_WORKERS` Redis Streams consumer
+# group, so Redis itself splits raw frames across replicas -- no extra
+# coordination needed. See docs/decisions/0005-edge-vs-cloud.md.
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  timescaledb:
+    image: timescale/timescaledb:2.14.2-pg16
+    environment:
+      POSTGRES_USER: camtrack
+      POSTGRES_PASSWORD: camtrack
+      POSTGRES_DB: camtrack
+    ports:
+      - "5432:5432"
+    volumes:
+      - timescale-data:/var/lib/postgresql/data
+      - ./src/storage/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U camtrack"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  ingestion:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.ingestion
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      CAMERA_CONFIG_PATH: configs/cameras.yaml
+    volumes:
+      - frame-data:/app/data
+      - ./configs:/app/configs:ro
+      - ./sample_data:/app/sample_data:ro
+
+  inference:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.inference
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      DETECTOR_USE_ONNX_RUNTIME: "true"
+      DETECTOR_WEIGHTS_PATH: /app/models/yolov8n.onnx
+    volumes:
+      - frame-data:/app/data
+      - ./models:/app/models:ro
+    deploy:
+      replicas: 2
+
+  storage:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.storage
+    depends_on:
+      redis:
+        condition: service_healthy
+      timescaledb:
+        condition: service_healthy
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      TIMESCALE_DSN: postgresql://camtrack:camtrack@timescaledb:5432/camtrack
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.dashboard
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    environment:
+      TIMESCALE_DSN: postgresql://camtrack:camtrack@timescaledb:5432/camtrack
+    ports:
+      - "8080:8080"
+
+volumes:
+  frame-data:
+  timescale-data:

@@ -1,0 +1,29 @@
+# Authored by: Shubham Tapadiya
+# Created: 2026-09-02
+# Updated: 2026-09-02
+#
+# Ingestion service image. One container per camera in production (see
+# docker-compose.yml's `deploy.replicas` / per-camera services) -- this
+# keeps one camera's reconnect loop from ever affecting another's, which a
+# shared thread pool (the local-dev fallback in src/ingestion/main.py)
+# cannot fully guarantee under resource contention.
+
+FROM python:3.11-slim AS base
+
+# libgl1/libglib2.0-0: required by opencv-python-headless's video decode
+# path even though the "headless" build drops the GUI (highgui) bindings.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgl1 \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY src/ ./src/
+COPY configs/ ./configs/
+
+ENV PYTHONUNBUFFERED=1
+ENTRYPOINT ["python", "-m", "src.ingestion.main"]

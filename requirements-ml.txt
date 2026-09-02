@@ -1,0 +1,16 @@
+# Optional ML backends. Install only what the deployment needs:
+#   pip install -r requirements.txt -r requirements-ml.txt
+#
+# - ultralytics: training-time YOLOv8 (PyTorch). Needed to fine-tune a model
+#   or run `UltralyticsYoloDetector` directly; NOT needed to run
+#   `OnnxYoloDetector` in production (see docs/decisions/0001-detector-choice.md).
+# - onnxruntime: deployment-time inference for the exported detector/re-ID
+#   models (`OnnxYoloDetector`, `OnnxReidEmbedder`). Swap for
+#   onnxruntime-gpu on a CUDA host, or a vendor-specific edge runtime
+#   (see docs/decisions/0005-edge-vs-cloud.md).
+# - confluent-kafka: only needed when STREAM_BACKEND=kafka
+#   (see docs/decisions/0003-message-queue-choice.md).
+
+ultralytics>=8.2
+onnxruntime>=1.17
+confluent-kafka>=2.3
