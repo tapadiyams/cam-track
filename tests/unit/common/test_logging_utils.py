@@ -60,8 +60,21 @@ def test_configure_logging_is_idempotent_across_repeated_calls():
 
 def test_log_with_context_omits_unset_fields(caplog):
     logger = configure_logging("context-test-service")
-    with caplog.at_level(logging.INFO, logger="context-test-service"):
-        log_with_context(logger, logging.INFO, "frame processed", camera_id="cam-02")
+
+    # `configure_logging` sets `propagate = False` on purpose (so a service's
+    # own handler doesn't also fire through the root logger's handlers and
+    # print every line twice) -- but pytest's `caplog` fixture only captures
+    # records that reach the *root* logger, regardless of the `logger=`
+    # passed to `at_level`. Without propagation, `caplog.records` would stay
+    # empty and `caplog.records[-1]` below would raise `IndexError`. Flip it
+    # on just for this test, and restore it so other tests aren't affected.
+    original_propagate = logger.propagate
+    logger.propagate = True
+    try:
+        with caplog.at_level(logging.INFO, logger="context-test-service"):
+            log_with_context(logger, logging.INFO, "frame processed", camera_id="cam-02")
+    finally:
+        logger.propagate = original_propagate
 
     record = caplog.records[-1]
     assert record.camera_id == "cam-02"
