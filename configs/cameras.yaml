@@ -8,17 +8,12 @@
 # same store), which is the unit the cross-camera re-ID matcher gallery is
 # scoped to -- see docs/decisions/0002-tracker-choice.md.
 cameras:
-  - camera_id: cam-01
-    source: rtsp://demo:demo@127.0.0.1:8554/entrance
-    zone: store-front
+  - camera_id: front-door
+    source: sample_data/front_door.mp4
+    zone: residence
     fps_cap: 15
 
-  - camera_id: cam-02
-    source: rtsp://demo:demo@127.0.0.1:8554/aisle-3
-    zone: store-front
+  - camera_id: back-door
+    source: sample_data/back_door.mp4
+    zone: residence
     fps_cap: 15
-
-  - camera_id: cam-03
-    source: sample_data/warehouse_loading_dock.mp4
-    zone: warehouse
-    fps_cap: 10
