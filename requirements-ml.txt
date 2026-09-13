@@ -1,4 +1,8 @@
-# Optional ML backends. Install only what the deployment needs:
+# Optional ML backends. Prefer installing via ./scripts/install_ml_deps.sh
+# rather than pip directly -- it checks/installs the librdkafka system
+# library confluent-kafka needs first, instead of letting the pip install
+# fail partway through with an opaque compiler error. If you install with
+# plain pip anyway:
 #   pip install -r requirements.txt -r requirements-ml.txt
 #
 # - ultralytics: training-time YOLOv8 (PyTorch). Needed to fine-tune a model
@@ -9,7 +13,10 @@
 #   onnxruntime-gpu on a CUDA host, or a vendor-specific edge runtime
 #   (see docs/decisions/0005-edge-vs-cloud.md).
 # - confluent-kafka: only needed when STREAM_BACKEND=kafka
-#   (see docs/decisions/0003-message-queue-choice.md).
+#   (see docs/decisions/0003-message-queue-choice.md). Needs the librdkafka
+#   C library to build -- ./scripts/install_ml_deps.sh handles this; a
+#   plain `pip install` will fail on macOS without it installed first
+#   (`brew install librdkafka`).
 
 ultralytics>=8.2
 onnxruntime>=1.17

@@ -19,6 +19,9 @@ models/*.onnx
 models/*.pt
 sample_data/*.mp4
 sample_data/*.avi
+sample_data/*.mov
+sample_data/*.mkv
+sample_data/*.webm
 
 .idea/
 .vscode/
